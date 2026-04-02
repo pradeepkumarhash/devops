@@ -856,3 +856,83 @@ docker container ls -a
 # Too tired to remove all containers? There's a bash shortcut
 # WARNING: This removes all containers. Don't worry, your image is still there.
 docker container rm -f $(docker container ls -aq)
+# Docker Volumes
+mkdir /home/ubuntu/mydata
+
+# Mounting bind mount to container
+docker run -itd --name u1 -v /home/ubuntu/mydata:/mydata ubuntu
+
+# Creating a file in mount
+docker exec -it u1 bash
+>   cd /mydata
+>   echo 'Hi' > abc.txt
+>   exit
+
+docker ps -a
+
+# Checking the file
+ll /home/ubuntu/mydata
+sudo bash -c "echo 'Hello' > /home/ubuntu/mydata/abc.txt"
+echo 'Hello' | sudo tee /home/ubuntu/mydata/abc.txt
+
+cat /home/ubuntu/mydata/abc.txt
+
+docker exec -it u1 bash
+>   cd /mydata
+>   cat abc.txt
+>   exit
+
+docker rm -f u1
+
+# Multiple bind mounts
+docker run -itd --name u1 \
+-v /home/ubuntu/mydata:/mydata1 \
+-v /home/ubuntu/mydata:/mydata2 ubuntu
+
+echo 'MyUbuntuFile' > /home/ubuntu/mydata/ubuntu.txt
+
+ll /home/ubuntu/mydata
+
+docker exec -it u1 bash
+>   cd /mydata1
+>   ls -la
+>   echo 'Hi' >> abc.txt
+>   cd /mydata2
+>   cat abc.txt
+>   echo 'Working?' >> ubuntu.txt
+>   cd /mydata1
+>   cat ubuntu.txt
+>   ls -la
+>   exit
+
+docker run -itd --name u2 -v /home/ubuntu/mydata:/mydata ubuntu
+docker exec -it u2 bash
+>   cd /mydata
+>   cat abc.txt
+>   echo '0123' > abc.txt
+>   exit
+
+docker inspect u1
+
+# Read-only bind mount
+docker run -itd --name u3 -v /home/ubuntu/mydata:/mydata:ro ubuntu
+
+docker exec -it u3 bash
+>   cd /mydata
+>   cat abc.txt
+>   echo 'XYZ' > abc.txt
+>   exit
+
+docker run -itd --name a1 \
+-v /home/ubuntu/mydata:/var/www/html \
+-p 80:80 myapache
+
+docker run -itd --name a2 \
+-v /home/ubuntu/mydata:/var/www/html \
+-p 81:80 myapache
+
+curl localhost:80/abc.txt
+curl localhost:81/abc.txt
+
+docker container rm -f $(docker container ls -aq)
+
