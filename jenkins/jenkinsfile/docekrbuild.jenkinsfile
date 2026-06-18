@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Define your Docker registry, image name, and credentials ID
+        REGISTRY_CREDS = 'dockerhub-credentials' // Setup inside Jenkins -> Manage Credentials
+        IMAGE_NAME     = 'your-dockerhub-username/my-app'
+        IMAGE_TAG      = "${env.BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout Code') {
+            steps {
+                // Clones your public or private GitHub repository
+                git branch: 'main', 
+                    url: 'https://github.com',
+                    credentialsId: 'github-credentials' // Leave out if repo is public
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Builds the image using the Dockerfile found at the root of the repo
+                    // Equivalent to: docker build -t username/my-app:tag .
+                    dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", ".")
+                }
+            }
+        }
+        
+        stage('Push to Registry') {
+            steps {
+                script {
+                    // Log in to Docker Hub and push the built image
+                    docker.withRegistry('https://index.docker.io/v1/', REGISTRY_CREDS) {
+                        dockerImage.push()
+                        dockerImage.push('latest') // Optional: also tag and push as latest
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up the local image workspace to save disk space
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+        }
+    }
+}
+
